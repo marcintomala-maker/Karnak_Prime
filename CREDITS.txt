@@ -1,0 +1,63 @@
+# KARNAK PRIME
+Created by MALEVOLENT WORMHOLE
+Built with the Godot Engine (MIT) - Juan Linietsky, Ariel Manzur and contributors
+
+# UNVANQUISHED
+The Unvanquished team - unvanquished.net
+Models, textures, sounds and icons are used under their individual licenses (listed below).
+
+## Alien models
+Mantis - Cupside - CC BY-SA 3.0
+Marauder - Osiris - CC BY-SA 2.5
+Dragoon - RXMT - CC BY-SA 3.0
+Tyrant - DandoomBuggy - CC BY-SA 4.0
+Granger - Casey - CC BY-SA 3.0
+Dretch - Gregstein - CC BY-SA 3.0
+Trapper - DandoomBuggy - CC BY-SA 3.0
+Acid Tube - DandoomBuggy - CC BY-SA 3.0
+Barricade - SyphonX - CC BY-SA 3.0
+Egg - SyphonX - CC BY-SA 3.0
+Booster - jdreyna - CC BY-SA 3.0
+Overmind - RXMT - CC BY-SA 3.0
+Creep texture - Osiris - CC BY-SA 2.5
+
+## Human structures and weapons
+Reactor, Drill (formerly Repeater), Turret, Rocket Pod, Medical Station - chris807 - CC BY-SA 4.0
+Telenode (telepads) - Warvinc - CC BY-SA 3.0
+Armoury (Overmind Destroyer) - Warvinc - CC BY-SA 3.0
+Lasgun - chris807 - CC BY-SA 4.0
+Construction Kit - Stannum - CC BY-SA 3.0
+Chaingun view model - Unvanquished team (source noted in the Unvanquished repository: sketchfab.com/3d-models/minigun-xm214-a-93c57731ed8648e99c359c865f748888)
+
+## Textures
+eX texture set - Yves "evillair" Allaire, Viech - CC BY-SA 4.0
+pk02 texture set - Philip "Blazeeer" Klevestav - CC BY 3.0
+Space skyboxes - Stijn "Ingar" Buys - CC BY-SA 3.0 / GPLv2
+Weapon and alien effect sprites, structure icons - The Unvanquished team
+
+## Sounds
+Legacy sound set - The Tremulous team and the Unvanquished team - CC BY-SA 2.5
+Chaingun - Michel Baradari - CC BY-SA 3.0
+Rocket pod firing and lock-on - Maximilian "Viech" Stahlberg - CC BY-SA 3.0
+Rocket flash and missile - Iwan "qubodup" Gabovitch, Pawel "enneract" Redman - CC0 1.0
+Structure pre-build - Obani, Thomas "illwieckz" Debesse - CC BY-SA 3.0 / 4.0
+Ambient hum - Tim "Timbo" Angus - CC BY-SA 3.0
+Wind (map Forlorn) - Pete "klangfabrik" Chapman - CC0 1.0
+Deep bass rumble, drone, lightning strike (map Thunder) - ERH, oyenstikker, artifact; map by Jack "EmperorJack" Purvis - CC BY-SA 3.0
+Heartbeat - The Unvanquished team
+
+# DUELYST
+Counterplay Games and the OpenDuelyst project - released under CC0 1.0
+User interface sprites, rune glyphs, card frames, particles
+Music: Tutorial, Codex, Abyssian, Duskfall, Age of Disjunction
+Sound effects: interface, victory, telepad pling, Nip
+Emotional Support Pet: Nip
+Lato font - Lukasz Dziedzic - SIL Open Font License 1.1
+
+# 0 A.D.
+Wildfire Games - play0ad.com - CC BY-SA 3.0
+Persian, Ptolemaic and Kushite building models
+
+# LICENSES
+Assets under CC BY-SA remain under CC BY-SA; modified versions in this game are released under the same license.
+Full license texts: creativecommons.org/licenses
