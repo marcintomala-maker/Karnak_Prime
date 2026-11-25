@@ -70,6 +70,7 @@ func _setup_input() -> void:
 	_key("move_right", [KEY_D, KEY_RIGHT])
 	_key("sprint", [KEY_SHIFT])
 	_key("dash", [KEY_SPACE])
+	_key("jump", [KEY_CTRL])
 	_key("fire", [-MOUSE_BUTTON_LEFT])
 	_key("flare", [-MOUSE_BUTTON_RIGHT])
 	_key("lantern", [KEY_TAB])

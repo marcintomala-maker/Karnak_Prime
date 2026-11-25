@@ -12,8 +12,12 @@ var weapons: Weapons
 var lantern: Lantern
 var neck_light: OmniLight3D
 
+var max_health := Defs.MAX_HEALTH
+var max_toxic := Defs.MAX_TOXIC
 var health := Defs.MAX_HEALTH
 var toxic := Defs.MAX_TOXIC        # mental/neurological integrity; poison drains it
+var _hot_health := 0.0             # heal-over-time pools (telepads)
+var _hot_toxic := 0.0
 var alive := true
 var controls_enabled := true
 var in_menu := false
@@ -95,7 +99,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		lantern.toggle()
 
 func toxicity() -> float:
-	return clampf(1.0 - toxic / Defs.MAX_TOXIC, 0.0, 1.0)
+	return clampf(1.0 - toxic / max_toxic, 0.0, 1.0)
 
 func _physics_process(delta: float) -> void:
 	if not alive:
@@ -112,22 +116,20 @@ func _physics_process(delta: float) -> void:
 	wish = wish.normalized() * minf(input.length(), 1.0)
 	var on_floor := is_on_floor()
 	_dash_cd -= delta
-	# --- dash / jump: Space dashes sideways/back; with a forward component it jumps instead
-	if can_move and Input.is_action_just_pressed("dash"):
-		if input.y < -0.3:
-			if on_floor:
-				velocity.y = Defs.JUMP_VELOCITY * (1.0 - 0.5 * tox)
-				Sfx.play_3d("player/jump", global_position, -8.0, 20.0)
-		elif _dash_cd <= 0.0 and _dash_t <= 0.0:
-			var local := Vector3(input.x, 0, maxf(input.y, 0.0))
-			if local.length() < 0.2:
-				local = Vector3(0, 0, 1)
-			_dash_dir = (transform.basis * local.normalized())
-			_dash_dir.y = 0
-			_dash_dir = _dash_dir.normalized()
-			_dash_t = Defs.DASH_TIME
-			game.noise(global_position, Defs.NOISE_DASH)
-			Sfx.play_3d("player/land", global_position, -6.0, 20.0, 1.3)
+	# --- jump (Ctrl) and dodge (Space): any direction, no input = dodge back
+	if can_move and Input.is_action_just_pressed("jump") and on_floor:
+		velocity.y = Defs.JUMP_VELOCITY * (1.0 - 0.5 * tox)
+		Sfx.play_3d("player/jump", global_position, -8.0, 20.0)
+	if can_move and Input.is_action_just_pressed("dash") and _dash_cd <= 0.0 and _dash_t <= 0.0:
+		var local := Vector3(input.x, 0, input.y)
+		if local.length() < 0.2:
+			local = Vector3(0, 0, 1)
+		_dash_dir = (transform.basis * local.normalized())
+		_dash_dir.y = 0
+		_dash_dir = _dash_dir.normalized()
+		_dash_t = Defs.DASH_TIME
+		game.noise(global_position, Defs.NOISE_DASH)
+		Sfx.play_3d("player/land", global_position, -6.0, 20.0, 1.3)
 	if _dash_t > 0.0:
 		_dash_t -= delta
 		var f := Defs.DASH_SPEED * (0.4 + 0.6 * (_dash_t / Defs.DASH_TIME))
@@ -211,8 +213,17 @@ func damage_toxic(amount: float) -> void:
 		_die(true)
 
 func heal(hp: float, tx: float) -> void:
-	health = minf(health + hp, Defs.MAX_HEALTH)
-	toxic = minf(toxic + tx, Defs.MAX_TOXIC)
+	health = minf(health + hp, max_health)
+	toxic = minf(toxic + tx, max_toxic)
+
+## Telepad bonus: +20 to the stat's maximum and +100 healed over 5 seconds.
+func telepad_bonus(stat: String) -> void:
+	if stat == "health":
+		max_health += 20.0
+		_hot_health += 100.0
+	else:
+		max_toxic += 20.0
+		_hot_toxic += 100.0
 
 func take_damage(hp: float, tx: float, from: Vector3) -> void:
 	if not alive or god_mode:
@@ -235,6 +246,12 @@ func take_damage(hp: float, tx: float, from: Vector3) -> void:
 
 func _process(delta: float) -> void:
 	_pain_cd = maxf(_pain_cd - delta, -1.0)
+	if alive and (_hot_health > 0.0 or _hot_toxic > 0.0):
+		var h := minf(_hot_health, 20.0 * delta)
+		var t := minf(_hot_toxic, 20.0 * delta)
+		_hot_health -= h
+		_hot_toxic -= t
+		heal(h, t)
 
 func _die(from_toxic: bool) -> void:
 	if not alive:

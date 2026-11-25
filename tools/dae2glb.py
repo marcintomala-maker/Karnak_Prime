@@ -54,6 +54,75 @@ def load(path):
     I2 = inv[I.reshape(-1)].reshape(-1, 3).astype(np.uint32)
     return P2.astype(np.float32), N2.astype(np.float32), U2.astype(np.float32), I2
 
+def fill_holes(P, N, U, I, max_dev=0.6):
+    """Close open boundary loops (missing ceilings / bottoms the RTS camera never sees).
+    Only near-planar loops are capped (fan from the loop centroid)."""
+    key = np.round(P, 3)
+    uniq, inv = np.unique(key, axis=0, return_inverse=True)
+    inv = inv.reshape(-1)
+    F = inv[I]
+    from collections import defaultdict
+    cnt = defaultdict(int); directed = {}
+    for f in F:
+        for a, b in ((f[0], f[1]), (f[1], f[2]), (f[2], f[0])):
+            k = (min(a, b), max(a, b)); cnt[k] += 1; directed[(a, b)] = True
+    nxt = defaultdict(list)
+    for (a, b) in directed:
+        if cnt[(min(a, b), max(a, b))] == 1:
+            nxt[b].append(a)        # reversed so the cap winds opposite to its neighbour faces
+    used = set(); loops = []
+    for start in list(nxt.keys()):
+        if start in used: continue
+        loop = [start]; used.add(start); cur = start
+        for _ in range(4000):
+            cand = [v for v in nxt[cur] if v not in used or (v == start and len(loop) > 2)]
+            if not cand: break
+            v = cand[0]
+            if v == start: loops.append(loop); break
+            loop.append(v); used.add(v); cur = v
+    newP, newN, newU, newI = [], [], [], []
+    base = len(P); added = 0
+    for loop in loops:
+        if len(loop) < 3 or len(loop) > 400: continue
+        pts = uniq[loop]
+        c = pts.mean(0)
+        u_, s_, vt = np.linalg.svd(pts - c)
+        n = vt[2]
+        dev = np.abs((pts - c) @ n).max()
+        ext = np.linalg.norm(pts.max(0) - pts.min(0))
+        if dev > max_dev or ext < 0.05: continue
+        # orient cap normal consistently with the loop winding
+        acc = np.zeros(3)
+        for k in range(len(pts)):
+            acc += np.cross(pts[k] - c, pts[(k + 1) % len(pts)] - c)
+        if np.linalg.norm(acc) < 1e-9: continue
+        n = acc / np.linalg.norm(acc)
+        # ear-clip in the loop's plane (handles concave outlines without spikes)
+        import mapbox_earcut as earcut
+        ax = np.cross(n, [1, 0, 0] if abs(n[0]) < 0.9 else [0, 1, 0]); ax /= np.linalg.norm(ax)
+        ay = np.cross(n, ax)
+        pts2 = np.stack([(pts - c) @ ax, (pts - c) @ ay], axis=1).astype(np.float64)
+        try:
+            tri = np.asarray(earcut.triangulate_float64(pts2, np.array([len(pts2)], dtype=np.uint32))).reshape(-1, 3)
+        except Exception:
+            continue
+        if len(tri) == 0:
+            continue
+        ci = base + sum(len(x) for x in newP)
+        newP.append(pts); newN.append(np.repeat(n[None], len(pts), 0)); newU.append(np.zeros((len(pts), 2)))
+        for t in tri:
+            a, b, cc = int(t[0]), int(t[1]), int(t[2])
+            # keep cap winding consistent with the loop normal
+            if np.dot(np.cross(pts[b] - pts[a], pts[cc] - pts[a]), n) < 0:
+                b, cc = cc, b
+            newI.append([ci + a, ci + b, ci + cc])
+        added += 1
+    if not newP:
+        return P, N, U, I, 0
+    P2 = np.vstack([P] + newP).astype(np.float32); N2 = np.vstack([N] + newN).astype(np.float32)
+    U2 = np.vstack([U] + newU).astype(np.float32); I2 = np.vstack([I, np.array(newI, dtype=np.uint32)]).astype(np.uint32)
+    return P2, N2, U2, I2, added
+
 def write(P, N, U, I, out):
     g = GLB(); J = g.j
     J['nodes'].append(dict(name='Building', mesh=0)); J['scenes'][0]['nodes'] = [0]
@@ -76,6 +145,8 @@ if __name__ == '__main__':
         if r is None: print('empty', name); continue
         P, N, U, I = r
         mn, mx = P.min(0), P.max(0)
+        P, N, U, I, nfill = fill_holes(P, N, U, I)
+        print(name, 'capped holes:', nfill)
         write(P, N, U, I, os.path.join(a.outdir, name + '.glb'))
         man[name] = dict(min=mn.tolist(), max=mx.tolist(), tris=int(len(I)))
         print(f'{name}: tris={len(I)} size={np.round(mx - mn, 1).tolist()} miny={mn[1]:.2f}')

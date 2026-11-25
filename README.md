@@ -15,8 +15,8 @@ A short sci-fi horror FPS made in **Godot 4.7** from free, human-made assets by 
 |---|---|
 | Move | W A S D |
 | Sprint (louder) | Shift |
-| Dash (left / right / back; no input = back) | Space |
-| Jump | Space while holding W (forward dodges are not allowed, so forward + Space jumps) |
+| Dodge (any direction; no direction = back) | Space |
+| Jump | Left Ctrl |
 | Fire / repair beam | Left mouse |
 | Flare | Right mouse |
 | Lantern on/off | Tab |
@@ -26,8 +26,12 @@ A short sci-fi horror FPS made in **Godot 4.7** from free, human-made assets by 
 
 ## Objectives
 1. Destroy all **621 eggs** (clusters of 3-6 on walls and streets).
-2. Destroy all **6 Overminds** (bullet- and bomb-proof). Build an *Overmind Destroyer* near
-   one (needs a Reactor in range), then survive the 60 s **SWARM** within 40 m of it.
+2. Destroy all **6 Overminds** (bullet- and bomb-proof). Build an *Overmind Destroyer* within
+   20 m of one (needs a Reactor in range), then survive the 60 s **SWARM** within 40 m of it.
+
+Helpers: glowing lime **Dretches** are blind and harmless and always crawl to the nearest egg
+(shoot or step on them). A lime arrow on the scanner rim points to the nearest egg.
+**Telepads** (100, red = Health, yellow = Toxic) raise that stat's maximum by 20 and heal 100.
 
 ## Project layout
 ```
@@ -55,10 +59,12 @@ tests/         headless smoke tests used during development
 * Unvanquished's asset repositories contain **no music tracks**, so in-game music uses dark
   Duelyst tracks (Abyssian, Duskfall, Age of Disjunction) plus Unvanquished ambient wind and drones.
 * There is **no breathing sample** in the packs; heavy toxicity plays the Unvanquished heartbeat instead.
-* The Unvanquished **Repeater model no longer exists**: it became the Drill. The Bomb uses the
-  Drill model (as requested), so the Overmind Destroyer uses the Telenode model + Repeater sounds.
-* The Trapper is a stationary turret in Unvanquished; here its model is used as a mobile alien
-  (it has no walk animation, so it skitters in its idle pose).
+* The Overmind Destroyer uses the Armoury model with the old Repeater sounds; telepads use the
+  Telenode model (static, unanimated).
+* Trappers are stationary (3x size, lime glow) at the ziggurat, near Overminds and on the
+  avenues; when aggroed they lob poison and birth aggroed Mantises every 7 s (max 5 alive each).
+* 0 A.D. meshes had faces missing where an RTS camera never looks; open, near-planar boundary
+  loops were capped (ear-clipped) by the pipeline and buildings render double-sided.
 * Wall-climbing is a visual approximation (aliens turn to the wall and crawl up its face);
   pathfinding is on a 2 m grid.
 * The chaingun view model's upstream source (a Sketchfab model linked from the Unvanquished

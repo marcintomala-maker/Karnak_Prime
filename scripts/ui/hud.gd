@@ -27,6 +27,9 @@ var _sweep := 0.0
 var _t := 0.0
 var _markers: Array = []
 var underwater := false
+var flash_rect: TextureRect
+var _egg_dir := Vector2.ZERO
+var _egg_t := 0.0
 
 func setup(g: Game) -> void:
 	game = g
@@ -49,6 +52,14 @@ func _ready() -> void:
 	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	UIKit.fullscreen(vignette)
 	root.add_child(vignette)
+	flash_rect = TextureRect.new()
+	flash_rect.texture = UIKit.ui("vignette")
+	flash_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	flash_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	flash_rect.modulate = Color(1, 1, 1, 0)
+	flash_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UIKit.fullscreen(flash_rect)
+	root.add_child(flash_rect)
 	# sacred geometry in the four corners of the visor
 	for c in [Vector2(0, 0), Vector2(1, 0), Vector2(0, 1), Vector2(1, 1)]:
 		var sg := SacredGeometry.new()
@@ -140,6 +151,12 @@ func show_toast(text: String, color := UIKit.LIME, t := 3.0) -> void:
 	_toast_t = t
 	Sfx.play_ui("ui/objective", -4.0)
 
+## Coloured vignette pulse (telepads).
+func flash_screen(c: Color) -> void:
+	flash_rect.modulate = Color(c.r, c.g, c.b, 1.0)
+	var tw := create_tween()
+	tw.tween_property(flash_rect, "modulate:a", 0.0, 1.1).set_ease(Tween.EASE_OUT)
+
 func set_underwater(v: bool) -> void:
 	underwater = v
 
@@ -153,7 +170,7 @@ func _process(delta: float) -> void:
 	_t += delta
 	var p := game.player
 	_damage_pulse = maxf(_damage_pulse - delta * 0.8, 0.0)
-	var hf := p.health / Defs.MAX_HEALTH
+	var hf := p.health / p.max_health
 	var hurt := clampf((1.0 - hf) * 0.8 + _damage_pulse, 0.0, 1.0)
 	var tint := UIKit.TEAL.lerp(UIKit.RED, hurt)
 	var vp := root.get_viewport_rect().size
@@ -197,7 +214,25 @@ func _process(delta: float) -> void:
 				continue
 			var local := Vector2(d.x, d.z).rotated(yaw)
 			_scan_dots.append(local / 100.0)
+		for t in game.trappers:
+			if is_instance_valid(t) and not t.dead:
+				var d3: Vector3 = t.global_position - p.global_position
+				if Vector2(d3.x, d3.z).length() < 100.0:
+					_scan_dots.append(Vector2(d3.x, d3.z).rotated(yaw) / 100.0)
 		Sfx.play_ui("ui/hover", -26.0, 0.6)
+	_egg_t -= delta
+	if _egg_t <= 0.0:
+		_egg_t = 0.25
+		_egg_dir = Vector2.ZERO
+		var best := INF
+		for e in game.eggs:
+			if not is_instance_valid(e) or e.dead:
+				continue
+			var d4: Vector3 = e.global_position - p.global_position
+			var l := d4.length_squared()
+			if l < best:
+				best = l
+				_egg_dir = Vector2(d4.x, d4.z).rotated(p.rotation.y).normalized()
 	_update_markers()
 	draw_layer.queue_redraw()
 
@@ -221,13 +256,13 @@ func _draw_hud() -> void:
 	if p == null or not p.alive:
 		return
 	var vp := draw_layer.get_viewport_rect().size
-	var hf := p.health / Defs.MAX_HEALTH
+	var hf := p.health / p.max_health
 	var tint := UIKit.TEAL.lerp(UIKit.RED, clampf((1.0 - hf) * 0.8 + _damage_pulse, 0.0, 1.0))
 	_draw_frame(vp, tint)
 	# --- health + toxic arcs (bottom-left)
 	var c := Vector2(150, vp.y - 150)
 	_arc_bar(c, 104, hf, UIKit.RED.lerp(Color(1, 0.6, 0.5), 0.3), 10)
-	_arc_bar(c, 84, p.toxic / Defs.MAX_TOXIC, UIKit.LIME, 8)
+	_arc_bar(c, 84, p.toxic / p.max_toxic, UIKit.LIME, 8)
 	var hi := UIKit.tex("res://assets/icons/health.png")
 	draw_layer.draw_texture_rect(hi, Rect2(c - Vector2(26, 26), Vector2(52, 52)), false, Color(1, 0.45, 0.4, 0.85))
 	# --- lantern + flare radials (bottom-right)
@@ -259,6 +294,19 @@ func _draw_hud() -> void:
 		draw_layer.draw_circle(pos, 5.0, Color(1.0, 0.1, 0.08, 0.95 * fade))
 		draw_layer.draw_circle(pos, 9.0, Color(1.0, 0.1, 0.08, 0.25 * fade))
 	draw_layer.draw_circle(sc, 4.0, Color(tint, 0.9))
+	# lime arrow on the scanner rim pointing to the nearest egg
+	if _egg_dir != Vector2.ZERO:
+		var ang := _egg_dir.angle()
+		var behind := _egg_dir.y > 0.0
+		var rim_ang := ang
+		if behind:
+			rim_ang = PI if _egg_dir.x < 0.0 else TAU
+		var at := sc + Vector2(cos(rim_ang), sin(rim_ang)) * (R + 14.0)
+		var dir := _egg_dir
+		var side := Vector2(-dir.y, dir.x)
+		var tri := PackedVector2Array([at + dir * 13.0, at - dir * 7.0 + side * 9.0, at - dir * 7.0 - side * 9.0])
+		var pulse := 0.75 + 0.25 * sin(_t * 6.0)
+		draw_layer.draw_colored_polygon(tri, Color(UIKit.LIME, pulse))
 	# --- objective markers (Overmind)
 	var dia := UIKit.ui("symbol_main_menu_diamond")
 	for m in _markers:

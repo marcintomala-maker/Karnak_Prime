@@ -50,7 +50,7 @@ const BUILDABLES := {
 	"mgturret":  {"name": "MG TURRET", "cost": 200, "energy": 1, "hp": 250.0, "time": 10.0, "model": "mgturret", "size": 2.0},
 	"rocket":    {"name": "ROCKET TURRET", "cost": 400, "energy": 1, "hp": 250.0, "time": 15.0, "model": "rocketpod", "size": 2.2},
 	"bomb":      {"name": "BOMB", "cost": 100, "energy": 0, "hp": 80.0, "time": 2.0, "model": "drill", "size": 1.6},
-	"destroyer": {"name": "OVERMIND DESTROYER", "cost": 50, "energy": 1, "hp": 400.0, "time": 6.0, "model": "telenode", "size": 3.0},
+	"destroyer": {"name": "OVERMIND DESTROYER", "cost": 50, "energy": 1, "hp": 400.0, "time": 6.0, "model": "arm", "size": 3.0},
 }
 const BUILD_ORDER := ["reactor", "medstation", "mgturret", "rocket", "bomb", "destroyer"]
 const REACTOR_RANGE := 15.0
@@ -68,7 +68,7 @@ const BOMB_RADIUS := 10.0
 const BOMB_PLAYER_DAMAGE := 5000.0
 const DESTROYER_RANGE := 40.0
 const DESTROYER_TIME := 60.0
-const DESTROYER_PLACE_RANGE := 30.0
+const DESTROYER_PLACE_RANGE := 20.0
 
 # --- aliens  (speed m/s, hp, size = model length/height target in m)
 const ALIENS := {
@@ -76,10 +76,18 @@ const ALIENS := {
 	"marauder": {"hp": 100.0, "speed": 8.6, "size": 2.0, "model": "aliens/marauder", "attack": 42.0, "toxic": 0.0},
 	"dragoon":  {"hp": 3000.0, "speed": 10.5, "size": 3.4, "model": "aliens/dragoon", "attack": 321.0, "pounce": 534.0, "toxic": 0.0},
 	"granger":  {"hp": 20.0, "speed": 8.8, "size": 1.5, "model": "aliens/granger", "attack": 13.0, "toxic": 20.0},
-	"trapper":  {"hp": 60.0, "speed": 6.5, "size": 1.8, "model": "buildables/trapper", "attack": 0.0, "toxic": 0.0},
+	"dretch":   {"hp": 1.0, "speed": WALK_SPEED * 0.7, "size": 1.1, "model": "aliens/dretch", "attack": 0.0, "toxic": 0.0},
 	"tyrant":   {"hp": 5660.0, "speed": 4.6, "size": 6.4, "model": "aliens/tyrant", "attack": 504.0, "toxic": 0.0},
 }
-const STATIC_HP := {"egg": 10.0, "acid_tube": 30.0, "barricade": 1500.0, "booster": 10.0}
+const STATIC_HP := {"egg": 10.0, "acid_tube": 30.0, "barricade": 1500.0, "booster": 10.0, "trapper": 400.0}
+const TRAPPER_SPAWN_EVERY := 7.0
+const TRAPPER_MAX_CHILDREN := 5
+const TRAPPER_SIZE := 5.4
+const DRETCH_TARGET := 10
+const DRETCH_MAX := 16
+const TELEPADS := 100
+const TELEPAD_BONUS := 20.0
+const TELEPAD_HEAL := 100.0
 const ALERT_GRACE := 1.5
 const ALLY_ALERT_RADIUS := 20.0
 const UNAWARE_MULT := 2.0

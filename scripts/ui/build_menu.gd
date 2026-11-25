@@ -121,6 +121,9 @@ func _refresh() -> void:
 		var k: String = card.get_meta("kind")
 		var d: Dictionary = Defs.BUILDABLES[k]
 		var ok: bool = pts >= d.cost
+		if ok:
+			var reason := game.can_place(k, game.player.global_position + (-game.player.global_transform.basis.z) * 4.0)
+			ok = reason == "" or reason == "blocked"
 		card.modulate = Color(1, 1, 1) if ok else Color(1.0, 0.3, 0.28)
 
 func _process(_d: float) -> void:
@@ -129,7 +132,8 @@ func _process(_d: float) -> void:
 
 func _choose(k: String) -> void:
 	var d: Dictionary = Defs.BUILDABLES[k]
-	if game.player.weapons.ammo[Weapons.CKIT] < d.cost:
+	var reason := game.can_place(k, game.player.global_position + (-game.player.global_transform.basis.z) * 4.0)
+	if game.player.weapons.ammo[Weapons.CKIT] < d.cost or (reason != "" and reason != "blocked"):
 		Sfx.play_ui("ui/error", -4.0)
 		return
 	Sfx.play_ui("ui/select", -4.0)

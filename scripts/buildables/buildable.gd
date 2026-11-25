@@ -230,8 +230,8 @@ func _med(delta: float) -> void:
 	var d := Vector2(p.global_position.x - global_position.x, p.global_position.z - global_position.z).length()
 	if d < 1.8 and absf(p.global_position.y - global_position.y) < 1.6:
 		game.player_in_med = true
-		var want_h := minf(Defs.MAX_HEALTH - p.health, Defs.MED_RATE * delta)
-		var want_t := minf(Defs.MAX_TOXIC - p.toxic, Defs.MED_RATE * delta)
+		var want_h := minf(p.max_health - p.health, Defs.MED_RATE * delta)
+		var want_t := minf(p.max_toxic - p.toxic, Defs.MED_RATE * delta)
 		var total := minf(want_h + want_t, pool)
 		if total > 0.0:
 			var k := total / maxf(want_h + want_t, 0.0001)

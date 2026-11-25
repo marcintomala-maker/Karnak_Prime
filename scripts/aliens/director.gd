@@ -15,7 +15,7 @@ const GROUPS := {
 	"mantis": [3, 6],
 	"marauder": [2, 6],
 	"granger": [5, 20],
-	"trapper": [2, 5],
+	"dretch": [2, 4],
 	"dragoon": [1, 1],
 }
 
@@ -28,11 +28,17 @@ func noise(p: Vector3, radius: float) -> void:
 	for a in aliens:
 		if is_instance_valid(a) and not a.dead:
 			a.hear(p, radius)
+	for t in game.trappers:
+		if is_instance_valid(t) and not t.dead and t.global_position.distance_to(p) <= radius:
+			t.aggro()
 
 func ally_hurt(p: Vector3) -> void:
 	for a in aliens:
 		if is_instance_valid(a) and not a.dead and a.global_position.distance_to(p) < Defs.ALLY_ALERT_RADIUS:
 			a.alert()
+	for t in game.trappers:
+		if is_instance_valid(t) and not t.dead and t.global_position.distance_to(p) < Defs.ALLY_ALERT_RADIUS:
+			t.aggro()
 
 func on_alien_died(a: Alien) -> void:
 	aliens.erase(a)
@@ -58,8 +64,18 @@ func building_target_for(a: Alien) -> Node3D:
 			return b
 	return null
 
+func count_type(dretch: bool) -> int:
+	var n := 0
+	for a in aliens:
+		if is_instance_valid(a) and not a.dead and (a.type == "dretch") == dretch:
+			n += 1
+	return n
+
 func spawn(type: String, pos: Vector3, aware := false) -> Alien:
-	if aliens.size() >= Defs.MAX_MOBILE and not aware:
+	if type == "dretch":
+		if count_type(true) >= Defs.DRETCH_MAX:
+			return null
+	elif count_type(false) >= Defs.MAX_MOBILE and not aware:
 		return null
 	var a := Alien.new()
 	a.setup(game, type, pos, aware)
@@ -130,6 +146,7 @@ func _process(delta: float) -> void:
 func _maintain() -> void:
 	var pp := game.player.global_position
 	var near := 0
+	var near_dretch := 0
 	for a in aliens.duplicate():
 		if not is_instance_valid(a):
 			aliens.erase(a)
@@ -140,21 +157,25 @@ func _maintain() -> void:
 			a.queue_free()
 			continue
 		if d < 120.0:
-			near += 1
-	if near < Defs.AMBIENT_TARGET and aliens.size() < Defs.MAX_MOBILE and game.player_in_city(60.0):
-		# the ziggurat is a trap nest: trappers gather there
-		if pp.distance_to(game.zig_center) < 160.0 and _rng.randf() < 0.6:
-			var zp := _hidden_spawn_point(game.zig_center, 0.0, 75.0)
-			if zp != Vector3.INF:
-				spawn_group("trapper", zp, false)
-				return
+			if a.type == "dretch":
+				near_dretch += 1
+			else:
+				near += 1
+	if not game.player_in_city(60.0):
+		return
+	if near < Defs.AMBIENT_TARGET and count_type(false) < Defs.MAX_MOBILE:
 		var pt := _hidden_spawn_point(pp, Defs.SPAWN_MIN, Defs.SPAWN_MAX)
 		if pt != Vector3.INF:
-			var t := _pick_type({"mantis": 3.0, "marauder": 2.5, "granger": 1.2, "trapper": 1.0, "dragoon": 1.2})
+			var t := _pick_type({"mantis": 3.0, "marauder": 2.5, "granger": 1.2, "dragoon": 1.2})
 			spawn_group(t, pt, false)
+	# dretches are common: they lead the way to eggs
+	if near_dretch < Defs.DRETCH_TARGET:
+		var pt2 := _hidden_spawn_point(pp, 30.0, 95.0)
+		if pt2 != Vector3.INF:
+			spawn_group("dretch", pt2, false)
 
 func _horde() -> void:
-	var t := _pick_type({"granger": 3.0, "marauder": 2.5, "trapper": 1.5, "dragoon": 1.0, "mantis": 1.5})
+	var t := _pick_type({"granger": 3.0, "marauder": 2.5, "dragoon": 1.0, "mantis": 2.0})
 	var pp := game.player.global_position
 	var back := game.player.global_transform.basis.z
 	var pt := Vector3.INF
@@ -178,9 +199,7 @@ func _horde() -> void:
 
 func _cue(t: String) -> void:
 	# a distinct, unmistakable call so the player knows what is coming
-	var snd := "alien/%s_taunt" % t
-	if t == "trapper": snd = "alien/trapper_attack"
-	Sfx.play_ui(snd, 2.0, 0.85)
+	Sfx.play_ui("alien/%s_taunt" % t, 2.0, 0.85)
 
 func _swarm_wave() -> void:
 	for a in _swarm_alive.duplicate():
@@ -195,11 +214,10 @@ func _swarm_wave() -> void:
 		if cell.x < 0:
 			return
 		pt = game.data.cell_center(cell.x, cell.y)
-	var t := _pick_type({"granger": 3.0, "marauder": 2.5, "mantis": 2.0, "trapper": 1.5, "dragoon": 0.6})
+	var t := _pick_type({"granger": 3.0, "marauder": 2.5, "mantis": 2.5, "dragoon": 0.6})
 	var n := -1
 	if t == "granger": n = _rng.randi_range(4, 8)
 	elif t == "marauder": n = _rng.randi_range(2, 4)
-	elif t == "trapper": n = _rng.randi_range(2, 3)
 	elif t == "mantis": n = _rng.randi_range(3, 5)
 	var g := spawn_group(t, pt, true, n)
 	_swarm_alive.append_array(g)

@@ -164,6 +164,12 @@ func alien_hit(pos: Vector3, normal: Vector3) -> void:
 	_emit("blood", pos, normal)
 	flash(pos + normal * 0.3, Color(1.0, 0.7, 0.4), 0.9, 3.5, 0.06)
 
+func splat(pos: Vector3) -> void:
+	_emit("blood", pos, Vector3.UP, 2.0)
+	_emit("poof", pos, Vector3.UP, 1.5)
+	flash(pos + Vector3.UP * 0.3, Color(0.6, 1.0, 0.3), 2.5, 6.0, 0.15)
+	Sfx.play_3d("alien/flesh_impact", pos, 0.0, 40.0, 0.8)
+
 func world_hit(pos: Vector3, normal: Vector3) -> void:
 	_emit("sparks", pos, normal)
 	if randf() < 0.25:

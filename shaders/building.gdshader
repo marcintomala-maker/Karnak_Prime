@@ -1,6 +1,6 @@
 // Sci-fi cladding projected in world space over 0 A.D. building meshes (their own UVs are ignored).
 shader_type spatial;
-render_mode diffuse_lambert, specular_disabled;
+render_mode diffuse_lambert, specular_disabled, cull_disabled;
 
 uniform sampler2D wall_tex : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D roof_tex : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
@@ -40,6 +40,7 @@ void fragment() {
 	float floor_id = floor(rel / band_height);
 	float on = step(0.82, hash(vec2(floor_id, floor((wpos.x + wpos.z) * 0.05))));
 	float strip = smoothstep(0.10, 0.11, b) * (1.0 - smoothstep(0.125, 0.135, b)) * side * on;
+	if (!FRONT_FACING) { NORMAL = -NORMAL; }
 	ALBEDO = col * tint;
 	ROUGHNESS = 1.0;
 	METALLIC = 0.0;

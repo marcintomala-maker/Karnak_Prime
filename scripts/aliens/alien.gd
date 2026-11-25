@@ -1,7 +1,7 @@
 class_name Alien
 extends Node3D
 ## Mobile alien AI (Unvanquished player-class models): Mantis, Marauder, Dragoon,
-## Granger, Trapper, Tyrant. Perception -> 1.5 s alert grace -> hunt. Unaware = 2x damage.
+## Granger, Tyrant, Dretch (blind, harmless egg-seeker). Perception -> 1.5 s alert grace -> hunt. Unaware = 2x damage.
 
 const LOOPED := ["stand", "walk", "run", "run_left", "run_right", "walk_left", "walk_right", "stand1", "idle"]
 
@@ -61,7 +61,7 @@ func _ready() -> void:
 	add_child(model)
 	var aabb := Game.model_aabb(model)
 	var s: float = cfg.size / maxf(aabb.size.x, aabb.size.z)
-	if type == "granger" or type == "trapper":
+	if type == "granger" or type == "dretch":
 		s = cfg.size / maxf(aabb.size.y, maxf(aabb.size.x, aabb.size.z))
 	model.scale = Vector3.ONE * s
 	model.position = Vector3(-aabb.get_center().x * s, -aabb.position.y * s, -aabb.get_center().z * s)
@@ -84,7 +84,19 @@ func _ready() -> void:
 	area.add_child(cs)
 	area.set_meta("damage_target", self)
 	add_child(area)
-	if swarm:
+	if type == "dretch":
+		# blind, harmless, glows lime so it is easy to spot (and to follow to eggs)
+		var l := OmniLight3D.new()
+		l.light_color = Color(0.6, 1.0, 0.3)
+		l.omni_range = 5.0
+		l.light_energy = 1.1
+		l.shadow_enabled = false
+		l.light_specular = 0.0
+		l.position.y = _height * 0.7
+		add_child(l)
+		state = "dretch"
+		_dretch_next_egg()
+	elif swarm:
 		aware = true
 		state = "chase"
 	else:
@@ -117,14 +129,14 @@ func _sound(s: String, vol := 0.0, dist := 60.0) -> void:
 
 # ---------------------------------------------------------------- perception
 func hear(p: Vector3, radius: float) -> void:
-	if dead:
+	if dead or type == "dretch":
 		return
 	if global_position.distance_to(p) <= radius:
 		last_known = game.player.global_position if game.player else p
 		alert()
 
 func alert() -> void:
-	if dead or aware or alerted:
+	if dead or aware or alerted or type == "dretch":
 		return
 	alerted = true
 	alert_t = Defs.ALERT_GRACE
@@ -136,6 +148,8 @@ func is_unaware() -> bool:
 	return not aware      # includes the 1.5 s grace
 
 func _perceive() -> void:
+	if type == "dretch":
+		return
 	var p := game.player
 	if p == null or not p.alive:
 		return
@@ -168,6 +182,11 @@ func _perceive() -> void:
 func take_damage(amount: float, from_player := false, hit_pos := Vector3.ZERO, normal := Vector3.UP) -> void:
 	if dead:
 		return
+	if type == "dretch":
+		if hit_pos != Vector3.ZERO:
+			game.fx.alien_hit(hit_pos, normal)
+		die()
+		return
 	var mult := Defs.UNAWARE_MULT if is_unaware() else 1.0
 	if from_player and mult > 1.0:
 		game.hud.stealth_attack()
@@ -195,6 +214,11 @@ func die() -> void:
 		anim.get_animation(_anim_cur).loop_mode = Animation.LOOP_NONE
 	_sound("death", 0.0, 70.0)
 	game.fx.alien_hit(aim_point(), Vector3.UP)
+	if type == "dretch":
+		game.fx.splat(aim_point())
+		for c in get_children():
+			if c is OmniLight3D:
+				c.queue_free()
 	Flow.stats.kills += 1
 	game.director.on_alien_died(self)
 
@@ -328,6 +352,7 @@ func _physics_process(delta: float) -> void:
 			if game.player and global_position.distance_to(game.player.global_position) < 90.0:
 				_sound("taunt", 0.0, 90.0)
 	match state:
+		"dretch": _dretch(delta)
 		"roam": _roam(delta)
 		"idle": _idle(delta)
 		"climb": _climb(delta)
@@ -339,6 +364,49 @@ func _physics_process(delta: float) -> void:
 		"charge": _charge(delta)
 		"recover": _recover(delta)
 		"stalk": _stalk(delta)
+
+# ---- dretch: walks to the nearest egg, then on to a random egg within 300 m
+var _egg_target: Node3D = null
+
+func _dretch_next_egg() -> void:
+	var near: Array = []
+	var best: Node3D = null
+	var best_d := INF
+	for e in game.eggs:
+		if not is_instance_valid(e) or e == _egg_target:
+			continue
+		var d: float = e.global_position.distance_to(global_position)
+		if d < best_d:
+			best_d = d; best = e
+		if d < 300.0:
+			near.append(e)
+	if _egg_target == null:
+		_egg_target = best                     # first: the nearest egg
+	elif not near.is_empty():
+		_egg_target = near[_rng.randi() % near.size()]
+	else:
+		_egg_target = best
+	path = PackedVector3Array()
+	repath_t = 0.0
+
+func _dretch(delta: float) -> void:
+	var p := game.player
+	if p and p.alive:
+		var d := Vector2(p.global_position.x - global_position.x, p.global_position.z - global_position.z).length()
+		if d < 0.95 and absf(p.global_position.y - global_position.y) < 1.4:
+			die()          # stepped on: splat
+			return
+	if _egg_target == null or not is_instance_valid(_egg_target):
+		_dretch_next_egg()
+		if _egg_target == null:
+			vel = vel.lerp(Vector3.ZERO, delta * 4.0)
+			_move(delta)
+			_play("stand")
+			return
+	var arrived := _follow(_egg_target.global_position, cfg.speed, delta, 2.0)
+	_locomotion_anim(cfg.speed)
+	if arrived or global_position.distance_to(_egg_target.global_position) < 2.0:
+		_dretch_next_egg()
 
 func _roam(delta: float) -> void:
 	if alerted:
@@ -443,9 +511,6 @@ func _chase(delta: float) -> void:
 		tgt_pos = p.global_position if lose_t < 1.0 else last_known
 	var dist := global_position.distance_to(tgt_pos)
 	match type:
-		"trapper":
-			_trapper_ai(delta, tgt_pos, dist)
-			return
 		"dragoon":
 			if dist > 6.0 and dist < 25.0 and attack_cd <= 0.0 and game.los(aim_point(), tgt_pos + Vector3.UP):
 				if dist < 20.0 and _rng.randf() < 0.3:

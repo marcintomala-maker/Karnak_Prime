@@ -9,7 +9,7 @@ func _ready() -> void:
 	var g: Game = Game.I
 	while not g._ready_to_play:
 		await get_tree().process_frame
-	print("GAME READY  eggs=", g.eggs.size(), " overminds=", g.overminds.size(), " statics=", g.statics.size(), " buildings=", g.world.building_info.size())
+	print("GAME READY  eggs=", g.eggs.size(), " overminds=", g.overminds.size(), " statics=", g.statics.size(), " buildings=", g.world.building_info.size(), " trappers=", g.trappers.size(), " telepads=", g.telepads.size())
 	await _shot("spawn")
 	var p := g.player
 	p.god_mode = "--mortal" not in OS.get_cmdline_user_args()
@@ -23,7 +23,7 @@ func _ready() -> void:
 	await _shot("city_overmind")
 	# spawn a few aliens in front
 	var fwd := -p.global_transform.basis.z
-	for t in ["mantis", "marauder", "dragoon", "granger", "trapper", "tyrant"]:
+	for t in ["mantis", "marauder", "dragoon", "granger", "dretch", "dretch", "tyrant"]:
 		var c := g.data.nearest_walkable(p.global_position + fwd * 22.0 + p.global_transform.basis.x * randf_range(-5, 5), 4)
 		if c.x >= 0:
 			g.director.spawn(t, g.data.cell_center(c.x, c.y), false)
@@ -52,6 +52,23 @@ func _ready() -> void:
 	await get_tree().create_timer(0.3).timeout
 	await _shot("build_menu")
 	g.hud.build_menu.close_menu()
+	# step on a telepad
+	var tp: Telepad = g.telepads[0]
+	var mh := p.max_health; var mt := p.max_toxic
+	p.global_position = tp.global_position + Vector3.UP * 0.5
+	await get_tree().create_timer(0.4).timeout
+	print("telepad used=", tp.used, " stat=", tp.stat, " max ", mh, "->", p.max_health, " / ", mt, "->", p.max_toxic)
+	await _shot("telepad_flash")
+	# look at a trapper and aggro it
+	var tr: AlienStatic = g.trappers[0]
+	var c2 := g.data.nearest_walkable(tr.global_position + Vector3(14, 0, 0), 6)
+	p.global_position = g.data.cell_center(c2.x, c2.y) + Vector3.UP * 0.3
+	var to2 := tr.global_position - p.global_position
+	p.set_look(atan2(-to2.x, -to2.z), 0.15)
+	tr.aggro()
+	await get_tree().create_timer(10.0).timeout
+	print("trapper aggro=", tr.aggroed, " children=", tr._children.size())
+	await _shot("trapper")
 	print("aliens alive ", g.director.aliens.size(), " player hp ", p.health, " tox ", p.toxic)
 	# let the AI run for a while
 	await get_tree().create_timer(4.0).timeout

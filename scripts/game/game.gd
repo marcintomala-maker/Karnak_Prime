@@ -17,6 +17,8 @@ var player_buildings: Array = []
 var eggs: Array = []
 var overminds: Array = []
 var statics: Array = []
+var trappers: Array = []
+var telepads: Array = []
 var egg_total := Defs.EGG_TOTAL
 var eggs_destroyed := 0
 var overminds_destroyed := 0
@@ -351,6 +353,8 @@ func _place_objectives() -> void:
 		var cell := data.nearest_walkable(zig_center + Vector3(cos(a) * r, 0, sin(a) * r), 3)
 		if cell.x >= 0:
 			_static("booster", data.cell_center(cell.x, cell.y), _rng.randf() * TAU)
+	_place_trappers(spawn_pos)
+	_place_telepads()
 	var bars := 0
 	for k in 600:
 		if bars >= 16: break
@@ -374,6 +378,63 @@ func _place_objectives() -> void:
 					statics.append(bar)
 					bars += 1
 					break
+
+## Trappers guard important places: the ziggurat, every Overmind and the avenues.
+func _place_trappers(spawn_pos: Vector3) -> void:
+	var spots: Array[Vector3] = []
+	for k in 8:
+		var a := k * TAU / 8.0 + _rng.randf_range(-0.2, 0.2)
+		spots.append(zig_center + Vector3(cos(a), 0, sin(a)) * _rng.randf_range(60.0, 80.0))
+	for o in overminds:
+		if o.global_position.distance_to(zig_center) > 60.0:
+			var a := _rng.randf() * TAU
+			spots.append(o.global_position + Vector3(cos(a), 0, sin(a)) * _rng.randf_range(14.0, 20.0))
+	for a in data.meta.avenue_angles:
+		var r := _rng.randf_range(130.0, 230.0)
+		spots.append(Vector3(data.meta.city.x + cos(a) * r, 0, data.meta.city.z + sin(a) * r))
+	for sp in spots:
+		var cell := data.nearest_walkable(sp, 5)
+		if cell.x < 0:
+			continue
+		var p := data.cell_center(cell.x, cell.y)
+		if p.distance_to(spawn_pos) < 90.0:
+			continue
+		var t := _static("trapper", p, _rng.randf() * TAU)
+		trappers.append(t)
+
+## 100 telepads spread evenly (Poisson-disk style) over reachable city ground.
+func _place_telepads() -> void:
+	var cand: Array = []
+	for idx in data.city_cells:
+		if _clear(idx, 1):
+			cand.append(idx)
+	cand.shuffle()
+	var spacing := 34.0
+	var pts: Array[Vector3] = []
+	for pass_i in 6:
+		for idx in cand:
+			if pts.size() >= Defs.TELEPADS:
+				break
+			var p := data.cell_center(idx % data.N, idx / data.N)
+			var ok := true
+			for q in pts:
+				if Vector2(q.x - p.x, q.z - p.z).length() < spacing:
+					ok = false; break
+			if ok:
+				for o in overminds:
+					if o.global_position.distance_to(p) < 10.0:
+						ok = false; break
+			if ok:
+				pts.append(p)
+		if pts.size() >= Defs.TELEPADS:
+			break
+		spacing *= 0.85
+	for i in pts.size():
+		var t := Telepad.new()
+		t.setup(self, "health" if i % 2 == 0 else "toxic")
+		add_child(t)
+		t.global_position = pts[i]
+		telepads.append(t)
 
 func _static(kind: String, pos: Vector3, yaw: float) -> AlienStatic:
 	var s := AlienStatic.new()
@@ -752,7 +813,20 @@ func _victory() -> void:
 	cam.look_at(zig_center + Vector3.UP * 25.0)
 	# sun hangs low, straight ahead of the camera (light travels back toward the viewer)
 	var fwd := -cam.global_transform.basis.z
-	sun.global_transform = Transform3D(Basis.looking_at(Vector3(-fwd.x, -0.12, -fwd.z).normalized(), Vector3.UP), Vector3.ZERO)
+	fwd.y = 0
+	fwd = fwd.normalized().rotated(Vector3.UP, deg_to_rad(24.0))
+	sun.light_energy = 1.8
+	sun.light_color = Color(1.0, 0.62, 0.32)
+	sun.global_transform = Transform3D(Basis.looking_at(Vector3(-fwd.x, -0.14, -fwd.z).normalized(), Vector3.UP), Vector3.ZERO)
+	# warm, fire-like light washing the whole city (no shadows); light-only so the sky keeps one sun
+	var glow := DirectionalLight3D.new()
+	glow.light_color = Color(1.0, 0.5, 0.22)
+	glow.light_energy = 1.3
+	glow.light_specular = 0.0
+	glow.shadow_enabled = false
+	glow.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY
+	add_child(glow)
+	glow.global_transform = Transform3D(Basis.looking_at(Vector3(fwd.x * 0.8, -0.35, fwd.z * 0.8).normalized().rotated(Vector3.UP, deg_to_rad(-60.0)), Vector3.UP), Vector3.ZERO)
 	await Overlay.fade_to(0.0, 2.0)
 	var pan := create_tween()
 	pan.tween_property(cam, "global_position", cam.global_position + Vector3.UP * 10.0 - back * 30.0, 8.0).set_trans(Tween.TRANS_SINE)

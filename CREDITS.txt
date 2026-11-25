@@ -12,6 +12,7 @@ Marauder - Osiris - CC BY-SA 2.5
 Dragoon - RXMT - CC BY-SA 3.0
 Tyrant - DandoomBuggy - CC BY-SA 4.0
 Granger - Casey - CC BY-SA 3.0
+Dretch - Gregstein - CC BY-SA 3.0
 Trapper - DandoomBuggy - CC BY-SA 3.0
 Acid Tube - DandoomBuggy - CC BY-SA 3.0
 Barricade - SyphonX - CC BY-SA 3.0
@@ -22,7 +23,8 @@ Creep texture - Osiris - CC BY-SA 2.5
 
 ## Human structures and weapons
 Reactor, Drill (formerly Repeater), Turret, Rocket Pod, Medical Station - chris807 - CC BY-SA 4.0
-Telenode - Warvinc - CC BY-SA 3.0
+Telenode (telepads) - Warvinc - CC BY-SA 3.0
+Armoury (Overmind Destroyer) - Warvinc - CC BY-SA 3.0
 Lasgun - chris807 - CC BY-SA 4.0
 Construction Kit - Stannum - CC BY-SA 3.0
 Chaingun view model - Unvanquished team (source noted in the Unvanquished repository: sketchfab.com/3d-models/minigun-xm214-a-93c57731ed8648e99c359c865f748888)
@@ -48,7 +50,7 @@ Heartbeat - The Unvanquished team
 Counterplay Games and the OpenDuelyst project - released under CC0 1.0
 User interface sprites, rune glyphs, card frames, particles
 Music: Tutorial, Codex, Abyssian, Duskfall, Age of Disjunction
-Sound effects: interface, victory, Nip
+Sound effects: interface, victory, telepad pling, Nip
 Emotional Support Pet: Nip
 Lato font - Lukasz Dziedzic - SIL Open Font License 1.1
 

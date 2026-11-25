@@ -1,6 +1,7 @@
 class_name AlienStatic
 extends Node3D
-## Stationary alien structures: egg, overmind, acid_tube, barricade, booster.
+## Stationary alien structures: egg, overmind, acid_tube, barricade, booster, trapper.
+## Trapper: 3x size, glows lime; once aggroed it lobs poison and births aggroed Mantises every 7 s.
 
 var game: Game
 var kind := "egg"
@@ -14,6 +15,12 @@ var _cd := 0.0
 var _rng := RandomNumberGenerator.new()
 var _blocked_cells: Array = []
 var cluster_id := -1
+var aggroed := false
+var _grace := 0.0
+var _spawn_t := 2.0
+var _lob_t := 3.0
+var _calm_t := 0.0
+var _children: Array = []
 
 static var _egg_mesh: Mesh = null
 static var _egg_mats: Array = []
@@ -31,6 +38,24 @@ func _ready() -> void:
 		"overmind": _make_animated("overmind", 5.5)
 		"acid_tube": _make_animated("acid_tube", 1.7)
 		"booster": _make_animated("booster", 1.3)
+		"trapper":
+			_make_animated("trapper", Defs.TRAPPER_SIZE)
+			add_to_group("trapper")
+			var l := OmniLight3D.new()
+			l.light_color = Color(0.55, 1.0, 0.3)
+			l.omni_range = 12.0
+			l.light_energy = 1.1
+			l.shadow_enabled = false
+			l.light_specular = 0.0
+			l.position = Vector3(0, Defs.TRAPPER_SIZE * 0.9, 1.5)
+			add_child(l)
+			for mi in model.find_children("*", "MeshInstance3D", true, false):
+				for si in (mi as MeshInstance3D).mesh.get_surface_count():
+					var m = (mi as MeshInstance3D).get_surface_override_material(si)
+					if m is BaseMaterial3D:
+						m.emission_enabled = true
+						m.emission = Color(0.35, 0.8, 0.15)
+						m.emission_energy_multiplier = 0.18
 		"barricade": _make_barricade()
 	if kind == "overmind":
 		add_to_group("overmind")
@@ -61,6 +86,8 @@ func _make_animated(name_: String, size: float) -> void:
 	add_child(model)
 	var aabb := Game.model_aabb(model)
 	var s := size / maxf(aabb.size.x, aabb.size.z)
+	if kind == "trapper":
+		s = size / maxf(aabb.size.y, maxf(aabb.size.x, aabb.size.z))
 	model.scale = Vector3.ONE * s
 	model.position = Vector3(-aabb.get_center().x * s, -aabb.position.y * s, -aabb.get_center().z * s)
 	Game.prepare_materials(model)
@@ -170,6 +197,11 @@ func take_damage(amount: float, from_player := false, hit_pos := Vector3.ZERO, n
 		if randf() < 0.2:
 			Sfx.play_3d("alien/overmind_pain", global_position, -4.0, 60.0)
 		return
+	if kind == "trapper":
+		if from_player and (not aggroed or _grace > 0.0):
+			amount *= Defs.UNAWARE_MULT
+			game.hud.stealth_attack()
+		aggro()
 	hp -= amount
 	if hit_pos != Vector3.ZERO:
 		game.fx.alien_hit(hit_pos, normal)
@@ -208,13 +240,68 @@ func die() -> void:
 			if anim and anim.has_animation("destroy"):
 				anim.play("destroy")
 			get_tree().create_timer(2.0).timeout.connect(queue_free)
-		"acid_tube":
+		"acid_tube", "trapper":
 			Sfx.play_3d("alien/structure_destroyed", global_position, -2.0, 60.0)
 			game.fx.alien_hit(global_position + Vector3.UP * 0.8, Vector3.UP)
 			if anim and anim.has_animation("destroy"):
 				anim.play("destroy")
 			get_tree().create_timer(1.5).timeout.connect(queue_free)
 	Flow.stats.kills += 1 if kind != "egg" else 0
+
+func aggro() -> void:
+	if dead or kind != "trapper":
+		return
+	_calm_t = 0.0
+	if not aggroed:
+		aggroed = true
+		_grace = Defs.ALERT_GRACE
+		_spawn_t = 1.5 + Defs.ALERT_GRACE
+		Sfx.play_3d("alien/trapper_attack", global_position, 2.0, 80.0, 0.7)
+
+func _trapper(delta: float, p: Player) -> void:
+	var eye := global_position + Vector3.UP * Defs.TRAPPER_SIZE * 0.7
+	var head := p.cam.global_position
+	var dist := eye.distance_to(head)
+	_cd -= delta
+	if _cd <= 0.0:
+		_cd = 0.5
+		if not aggroed and p.alive and dist < 32.0 and (p.lantern.on or dist < 14.0) and game.los(eye, head):
+			aggro()
+	if not aggroed:
+		return
+	_grace = maxf(_grace - delta, 0.0)
+	if dist > 70.0:
+		_calm_t += delta
+		if _calm_t > 20.0:
+			aggroed = false
+		return
+	if _grace > 0.0:
+		return
+	_spawn_t -= delta
+	if _spawn_t <= 0.0:
+		_spawn_t = Defs.TRAPPER_SPAWN_EVERY
+		for c in _children.duplicate():
+			if not is_instance_valid(c) or c.dead:
+				_children.erase(c)
+		if _children.size() < Defs.TRAPPER_MAX_CHILDREN:
+			var a := _rng.randf() * TAU
+			var cell := game.data.nearest_walkable(global_position + Vector3(cos(a), 0, sin(a)) * (Defs.TRAPPER_SIZE * 0.7), 4)
+			if cell.x >= 0:
+				var m := game.director.spawn("mantis", game.data.cell_center(cell.x, cell.y), true)
+				if m:
+					m.last_known = p.global_position
+					_children.append(m)
+					game.fx.lime_burst(m.global_position + Vector3.UP * 0.5)
+					Sfx.play_3d("alien/evolve", m.global_position, -2.0, 50.0)
+	_lob_t -= delta
+	if _lob_t <= 0.0 and p.alive and dist < 30.0 and game.los(eye, head):
+		_lob_t = _rng.randf_range(3.0, 4.5)
+		var pr := AlienProjectile.new()
+		game.add_child(pr)
+		pr.lob(game, eye, p.global_position + Vector3(_rng.randf_range(-1, 1), 0, _rng.randf_range(-1, 1)), 2.5)
+		Sfx.play_3d("alien/trapper_attack", eye, -2.0, 60.0)
+		if anim and anim.has_animation("attack"):
+			anim.play("attack"); anim.queue("idle")
 
 func destroy_overmind() -> void:
 	dead = true
@@ -230,6 +317,8 @@ func _physics_process(delta: float) -> void:
 		return
 	var p := game.player
 	match kind:
+		"trapper":
+			_trapper(delta, p)
 		"booster":
 			if p.alive and p.global_position.distance_to(global_position) < 1.15:
 				die()
