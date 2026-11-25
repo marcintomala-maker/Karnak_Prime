@@ -29,6 +29,9 @@ A short sci-fi horror FPS made in **Godot 4.7** from free, human-made assets by 
 2. Destroy all **6 Overminds** (bullet- and bomb-proof). Build an *Overmind Destroyer* within
    20 m of one (needs a Reactor in range), then survive the 60 s **SWARM** within 40 m of it.
 
+Storm: every 30-240 s an unseen lightning strike lights the whole map white for 0.5 s (1 s fade) with a
+thunderclap (pitch varied slightly each time).
+
 Helpers: glowing lime **Dretches** are blind and harmless and always crawl to the nearest egg
 (shoot or step on them). A lime arrow on the scanner rim points to the nearest egg.
 **Telepads** (100, red = Health, yellow = Toxic) raise that stat's maximum by 20 and heal 100.

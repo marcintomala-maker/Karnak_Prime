@@ -38,6 +38,8 @@ var _med_ms := -1000
 var _music_t := 0.0
 var _ambient: AudioStreamPlayer
 var _amb_t := 10.0
+var _lightning_t := 0.0
+var _lightning: DirectionalLight3D
 
 var player_in_med: bool:
 	get: return Time.get_ticks_msec() - _med_ms < 150
@@ -139,6 +141,7 @@ func _ready() -> void:
 	add_child(hud)
 	hud.visible = false
 	_make_noise_rings()
+	_make_lightning()
 	_spawn_player()
 	_make_crash_site()
 	await get_tree().physics_frame
@@ -248,6 +251,30 @@ func _make_crash_site() -> void:
 	smoke.color_ramp = g
 	add_child(smoke)
 	smoke.global_position = pos + Vector3.UP * 1.5
+
+## Unseen lightning: a white map-wide flash (0.5 s, then 1 s fade) and a thunder strike.
+func _make_lightning() -> void:
+	_lightning = DirectionalLight3D.new()
+	_lightning.light_color = Color(0.92, 0.95, 1.0)
+	_lightning.light_energy = 0.0
+	_lightning.light_specular = 0.0
+	_lightning.shadow_enabled = false
+	_lightning.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY
+	_lightning.visible = false
+	_lightning.rotation_degrees = Vector3(-62, _rng.randf_range(0, 360), 0)
+	add_child(_lightning)
+	_lightning_t = _rng.randf_range(30.0, 240.0)
+
+func _strike() -> void:
+	_lightning_t = _rng.randf_range(30.0, 240.0)
+	_lightning.rotation_degrees = Vector3(_rng.randf_range(-75, -45), _rng.randf_range(0, 360), 0)
+	_lightning.visible = true
+	_lightning.light_energy = 1.3
+	Sfx.play_ui("ambient/lightning", 0.0, _rng.randf_range(0.93, 1.07))
+	var tw := create_tween()
+	tw.tween_interval(0.5)
+	tw.tween_property(_lightning, "light_energy", 0.0, 1.0)
+	tw.tween_callback(func(): _lightning.visible = false)
 
 func _make_noise_rings() -> void:
 	for i in 10:
@@ -708,6 +735,9 @@ func _process(delta: float) -> void:
 	_music_t -= delta
 	if _music_t <= 0.0:
 		_next_music()
+	_lightning_t -= delta
+	if _lightning_t <= 0.0:
+		_strike()
 
 func _next_music() -> void:
 	_music_t = _rng.randf_range(200.0, 320.0)

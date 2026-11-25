@@ -119,3 +119,4 @@ ui/nip_attack|duelyst/app/resources/sfx/sfx_f6_ghostwolf_attack_swing.m4a
 ui/swarm|duelyst/app/resources/sfx/sfx_f4_siren_attack_swing.m4a
 ui/objective|duelyst/app/resources/sfx/sfx_division_crest_reveal.m4a
 ui/explode_ui|duelyst/app/resources/sfx/sfx_ui_explosion.m4a
+ambient/lightning|maps/thunder/sound/thunder/lightningstrike.flac

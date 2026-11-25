@@ -43,7 +43,7 @@ Rocket flash and missile - Iwan "qubodup" Gabovitch, Pawel "enneract" Redman - C
 Structure pre-build - Obani, Thomas "illwieckz" Debesse - CC BY-SA 3.0 / 4.0
 Ambient hum - Tim "Timbo" Angus - CC BY-SA 3.0
 Wind (map Forlorn) - Pete "klangfabrik" Chapman - CC0 1.0
-Deep bass rumble, drone (map Thunder) - ERH, oyenstikker; map by Jack "EmperorJack" Purvis - CC BY-SA 3.0
+Deep bass rumble, drone, lightning strike (map Thunder) - ERH, oyenstikker, artifact; map by Jack "EmperorJack" Purvis - CC BY-SA 3.0
 Heartbeat - The Unvanquished team
 
 # DUELYST
